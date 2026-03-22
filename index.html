@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Year 9 English: Listening Mastery Module</title>
+    <style>
+        :root { --primary: #2c5282; --secondary: #4299e1; --success: #38a169; --error: #e53e3e; --bg: #f7fafc; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; user-select: none; }
+        
+        /* Lockdown Overlay */
+        #lockdown-ui { 
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.98); 
+            z-index: 10000; color: white; text-align: center; padding-top: 15%; 
+        }
+
+        .app-container { max-width: 850px; margin: 30px auto; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+        
+        .top-bar { background: var(--primary); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .content-area { padding: 40px; min-height: 450px; }
+
+        .audio-engine { background: #edf2f7; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 25px; border: 2px solid #e2e8f0; }
+        
+        .btn { padding: 14px 28px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; width: 100%; margin-bottom: 10px; }
+        .btn-audio { background: var(--secondary); color: white; font-size: 1.1em; }
+        .btn-audio:hover { background: var(--primary); }
+        .btn-audio:disabled { background: #cbd5e0; cursor: wait; }
+
+        .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .btn-choice { background: white; border: 2px solid #e2e8f0; color: #4a5568; }
+        .btn-choice:hover:not(:disabled) { border-color: var(--secondary); background: #ebf8ff; }
+        
+        .status-msg { text-align: center; font-weight: bold; margin: 15px 0; min-height: 24px; }
+        .progress-container { width: 100%; height: 6px; background: #e2e8f0; }
+        #progress-fill { height: 100%; background: var(--success); width: 0%; transition: 0.4s; }
+
+        .summary-card { border: 2px solid var(--primary); padding: 25px; border-radius: 12px; line-height: 1.8; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<div id="lockdown-ui">
+    <h1>⚠️ TAB SWITCH DETECTED</h1>
+    <p>This incident has been logged. Please stay on this page to complete your assessment.</p>
+    <button class="btn" style="width: 200px; background: white; color: black;" onclick="closeOverlay()">Resume Work</button>
+</div>
+
+<div class="app-container">
+    <div id="start-screen" class="content-area" style="text-align:center;">
+        <h2>English Listening Mastery: Year 9</h2>
+        <p>You must listen to each clip and answer correctly to progress. <br><strong>Incorrect guesses will force a re-listen.</strong></p>
+        <input type="text" id="stuName" placeholder="Enter Full Name" style="width: 80%; padding: 15px; margin: 20px 0; border: 2px solid #cbd5e0; border-radius: 8px;">
+        <button class="btn btn-audio" onclick="begin()">Enter Assessment</button>
+    </div>
+
+    <div id="main-screen" class="hidden">
+        <div class="top-bar">
+            <span id="label-name">Student: </span>
+            <span id="label-task">Task 1 of 10</span>
+        </div>
+        <div class="progress-container"><div id="progress-fill"></div></div>
+
+        <div class="content-area">
+            <div class="audio-engine">
+                <div style="font-size: 40px; margin-bottom: 10px;">🎧</div>
+                <h3 id="task-desc">Listen carefully to the passage.</h3>
+                <button id="playBtn" class="btn btn-audio" onclick="playCurrentClip()">Play Audio Clip</button>
+                <p id="listen-hint" style="font-size: 0.9em; color: #718096;">Questions unlock after listening.</p>
+            </div>
+
+            <div id="interaction-zone" class="hidden">
+                <p id="question-text" style="font-weight: 600; font-size: 1.1em;"></p>
+                <div id="choices-container" class="choice-grid"></div>
+            </div>
+            
+            <div id="feedback" class="status-msg"></div>
+        </div>
+    </div>
+
+    <div id="finish-screen" class="content-area hidden">
+        <div class="summary-card">
+            <h2 style="text-align:center; color: var(--success);">Mastery Completed!</h2>
+            <hr>
+            <p><strong>Student Name:</strong> <span id="res-name"></span></p>
+            <p><strong>Tasks Mastered:</strong> 10 / 10</p>
+            <p><strong>Incorrect Attempts:</strong> <span id="res-errors"></span></p>
+            <p><strong>Focus Integrity:</strong> <span id="res-integrity"></span></p>
+            <p><strong>Total Time:</strong> <span id="res-time"></span></p>
+            <p style="font-size: 0.8em; color: #718096;">Ref ID: <span id="res-id"></span></p>
+        </div>
+        <button class="btn btn-audio" style="margin-top: 20px;" onclick="location.reload()">Restart Practice</button>
+    </div>
+</div>
+
+<script>
+const data = [
+    { title: "Personal Details", text: "Hello, this is the school library. We have a book for David Miller. Please come to pick it up before five p-m today. Bring your student card.", q: "Who is the book for?", a: "David Miller", choices: ["David Miller", "The Librarian", "A teacher", "The office"], rate: 0.8 },
+    { title: "The Daily Special", text: "Welcome to the Green Cafe. Today's lunch special is tomato soup with fresh bread. It costs seven dollars and fifty cents. We are out of chicken sandwiches.", q: "How much is the lunch special?", a: "$7.50", choices: ["$5.70", "$7.00", "$7.50", "$10.00"], rate: 0.8 },
+    { title: "Weather Change", text: "The morning will be sunny, but clouds will move in around noon. Expect a heavy thunderstorm by three p-m. Temperatures will fall quickly afterward.", q: "What will happen at 3:00 PM?", a: "Thunderstorm", choices: ["Sunny weather", "Snow", "Thunderstorm", "Windy noon"], rate: 0.85 },
+    { title: "Library Rules", text: "To keep our library quiet, please turn off your mobile phones before entering. You can borrow up to four books for two weeks at a time. No food is allowed inside.", q: "How many books can a student borrow?", a: "4", choices: ["2", "4", "10", "14"], rate: 0.85 },
+    { title: "Plant Growth", text: "Photosynthesis is how plants turn sunlight into energy. They take in carbon dioxide and release oxygen. This is why forests are so important for the Earth's air.", q: "What do plants release into the air?", a: "Oxygen", choices: ["Carbon dioxide", "Sunlight", "Water", "Oxygen"], rate: 0.9 },
+    { title: "Historical Discovery", text: "Archaeologists in Egypt recently found a hidden room inside a small pyramid. They discovered golden jewelry and ancient pottery from over three thousand years ago.", q: "What was found in the hidden room?", a: "Jewelry and pottery", choices: ["A new king", "Jewelry and pottery", "Modern tools", "Ancient maps"], rate: 0.9 },
+    { title: "Travel Announcement", text: "The train to Manchester is delayed by twenty minutes due to signaling problems on the main line. Passengers for London should go to platform six immediately.", q: "Why is the Manchester train late?", a: "Signaling problems", choices: ["Heavy rain", "Signaling problems", "Platform change", "Engine fire"], rate: 0.95 },
+    { title: "The Red Panda", text: "Red pandas are not actually related to giant pandas; they are closer to raccoons. They spend most of their lives in trees and eat bamboo, fruit, and eggs.", q: "Which animal is the Red Panda more closely related to?", a: "Raccoons", choices: ["Giant Pandas", "Bears", "Raccoons", "Monkeys"], rate: 0.95 },
+    { title: "Renewable Energy", text: "Wind turbines convert kinetic energy into electricity. While they are a clean energy source, some people argue that they are noisy and ruin the look of the natural landscape.", q: "What is a common argument against wind turbines?", a: "They are noisy", choices: ["They cause pollution", "They are noisy", "They don't work", "They kill trees"], rate: 1.0 },
+    { title: "Artificial Intelligence", text: "The Turing Test was designed to see if a machine could mimic human conversation. If a human cannot tell the difference between the machine and a person, the machine passes the test.", q: "What is the goal of the Turing Test?", a: "Mimic human conversation", choices: ["Fix broken computers", "Mimic human conversation", "Build faster robots", "Translate languages"], rate: 1.0 }
+];
+
+let idx = 0;
+let errors = 0;
+let tabSwaps = 0;
+let startTime;
+let synth = window.speechSynthesis;
+let hasListened = false;
+
+// Lockdown logic
+window.onblur = () => {
+    if (synth.speaking) synth.cancel();
+    document.getElementById('lockdown-ui').style.display = 'block';
+    tabSwaps++;
+};
+function closeOverlay() { document.getElementById('lockdown-ui').style.display = 'none'; }
+
+function begin() {
+    const n = document.getElementById('stuName').value;
+    if (!n) return alert("Please enter your name.");
+    startTime = new Date();
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    document.getElementById('label-name').innerText = "Student: " + n;
+    refreshTask();
+}
+
+function refreshTask() {
+    hasListened = false;
+    document.getElementById('label-task').innerText = `Task ${idx + 1} of 10`;
+    document.getElementById('progress-fill').style.width = `${(idx / 10) * 100}%`;
+    document.getElementById('interaction-zone').classList.add('hidden');
+    document.getElementById('feedback').innerText = "";
+    document.getElementById('playBtn').disabled = false;
+    document.getElementById('playBtn').innerText = "Play Audio Clip";
+}
+
+function playCurrentClip() {
+    const utterance = new SpeechSynthesisUtterance(data[idx].text);
+    utterance.rate = data[idx].rate;
+    
+    utterance.onstart = () => {
+        document.getElementById('playBtn').disabled = true;
+        document.getElementById('playBtn').innerText = "🔊 Listening...";
+    };
+    
+    utterance.onend = () => {
+        hasListened = true;
+        document.getElementById('playBtn').innerText = "Listen Again";
+        document.getElementById('playBtn').disabled = false;
+        showQuestion();
+    };
+    
+    synth.speak(utterance);
+}
+
+function showQuestion() {
+    const qArea = document.getElementById('interaction-zone');
+    qArea.classList.remove('hidden');
+    document.getElementById('question-text').innerText = data[idx].q;
+    
+    const container = document.getElementById('choices-container');
+    container.innerHTML = "";
+    
+    data[idx].choices.sort(() => Math.random() - 0.5).forEach(c => {
+        const b = document.createElement('button');
+        b.className = "btn btn-choice";
+        b.innerText = c;
+        b.onclick = () => handleChoice(c);
+        container.appendChild(b);
+    });
+}
+
+function handleChoice(c) {
+    const f = document.getElementById('feedback');
+    if (c === data[idx].a) {
+        f.innerText = "Excellent! Mastery Confirmed.";
+        f.style.color = "var(--success)";
+        setTimeout(() => {
+            idx++;
+            if (idx < 10) refreshTask(); else finish();
+        }, 1200);
+    } else {
+        errors++;
+        f.innerText = "Incorrect. You must listen again to unlock the answer.";
+        f.style.color = "var(--error)";
+        // Hide questions to force re-listen
+        document.getElementById('interaction-zone').classList.add('hidden');
+        hasListened = false;
+    }
+}
+
+function finish() {
+    document.getElementById('main-screen').classList.add('hidden');
+    document.getElementById('finish-screen').classList.remove('hidden');
+    
+    const timeTaken = Math.floor((new Date() - startTime) / 60000);
+    document.getElementById('res-name').innerText = document.getElementById('stuName').value;
+    document.getElementById('res-errors').innerText = errors;
+    document.getElementById('res-time').innerText = timeTaken + " minutes";
+    document.getElementById('res-id').innerText = "AUTH-" + Math.random().toString(36).substr(2, 9).toUpperCase();
+    
+    let integrity = "High (Secure)";
+    if (tabSwaps > 2) integrity = "Medium (Warnings Issued)";
+    if (tabSwaps > 5) integrity = "Low (Suspicious Activity)";
+    document.getElementById('res-integrity').innerText = integrity + ` (${tabSwaps} tab swaps)`;
+}
+</script>
+</body>
+</html>
